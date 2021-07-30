@@ -399,12 +399,14 @@ if __name__ == '__main__':
         ensureDir(weights_save_path)
         save_saver = tf.train.Saver(max_to_keep=1)
 
-    config = tf.ConfigProto()
-    # config = tf.ConfigProto(
-    #     device_count = {'GPU': 0}
-    # )
-    config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
+    # config = tf.ConfigProto()
+    # # config = tf.ConfigProto(
+    # #     device_count = {'GPU': 0}
+    # # )
+    # config.gpu_options.allow_growth = True
+    # sess = tf.Session(config=config)
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)
+    sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
     """
     *********************************************************
