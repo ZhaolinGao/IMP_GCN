@@ -209,8 +209,13 @@ class IMP_GCN(object):
             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
         user_group_embeddings_side = tf.concat(temp_embed, 0) + ego_embeddings
 
+        user_group_embeddings_side = tf.split(user_group_embeddings_side, 10, axis=0)
+        user_group_embeddings_hidden_1 = []
+        for b in range(10):
+            user_group_embeddings_hidden_1.append(tf.matmul(user_group_embeddings_side[b], self.weights['W_gc_1']))
+        user_group_embeddings_hidden_1 = tf.concat(user_group_embeddings_hidden_1, axis=0)
 
-        user_group_embeddings_hidden_1 = tf.nn.leaky_relu(tf.matmul(user_group_embeddings_side, self.weights['W_gc_1']) + self.weights['b_gc_1'])
+        user_group_embeddings_hidden_1 = tf.nn.leaky_relu(user_group_embeddings_hidden_1 + self.weights['b_gc_1'])
 
         user_group_embeddings_hidden_d1 = tf.nn.dropout(user_group_embeddings_hidden_1, 0.6)
 
