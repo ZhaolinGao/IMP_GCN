@@ -5,18 +5,28 @@ Wang Xiang et al. Neural Graph Collaborative Filtering. In SIGIR 2019.
 
 @author: Xiang Wang (xiangwang@u.nus.edu)
 '''
+import pickle
 import numpy as np
 import random as rd
 import scipy.sparse as sp
 from time import time
+from collections import defaultdict
+
+def binarize_dataset(threshold, training_users, training_items, training_ratings):
+    for i in range(len(training_ratings)):
+        if training_ratings[i] > threshold:
+            training_ratings[i] = 1
+        else:
+            training_ratings[i] = 0
+    training_users = [training_users[i] for i in range(len(training_ratings)) if training_ratings[i] != 0]
+    training_items = [training_items[i] for i in range(len(training_ratings)) if training_ratings[i] != 0]
+    training_ratings = [rating for rating in training_ratings if rating != 0]
+    return training_users, training_items, training_ratings
 
 class Data(object):
-    def __init__(self, path, batch_size):
+    def __init__(self, dataset, path, batch_size):
         self.path = path
         self.batch_size = batch_size
-
-        train_file = path + '/train.txt'
-        test_file = path + '/test.txt'
 
         self.n_users, self.n_items = 0, 0
         self.n_train, self.n_test = 0, 0
@@ -24,55 +34,137 @@ class Data(object):
 
         self.exist_users = []
         
-        with open(train_file) as f:
-            for l in f.readlines():
-                if len(l) > 0:
-                    l = l.strip('\n').split(' ')
-                    items = [int(i) for i in l[1:]]
-                    uid = int(l[0])
-                    self.exist_users.append(uid)
-                    self.n_items = max(self.n_items, max(items))
-                    self.n_users = max(self.n_users, uid)
-                    self.n_train += len(items)
+        # with open(train_file) as f:
+        #     for l in f.readlines():
+        #         if len(l) > 0:
+        #             l = l.strip('\n').split(' ')
+        #             items = [int(i) for i in l[1:]]
+        #             uid = int(l[0])
+        #             self.exist_users.append(uid)
+        #             self.n_items = max(self.n_items, max(items))
+        #             self.n_users = max(self.n_users, uid)
+        #             self.n_train += len(items)
 
-        with open(test_file) as f:
-            for l in f.readlines():
-                if len(l) > 0:
-                    l = l.strip('\n')
-                    try:
-                        items = [int(i) for i in l.split(' ')[1:]]
-                    except Exception:
-                        continue
-                    self.n_items = max(self.n_items, max(items))
-                    self.n_test += len(items)
-        self.n_items += 1
-        self.n_users += 1
-        self.print_statistics()
-        self.R = sp.dok_matrix((self.n_users, self.n_items), dtype=np.float32)
-        self.train_items, self.test_set = {}, {}
-        with open(train_file) as f_train:
-            with open(test_file) as f_test:
-                for l in f_train.readlines():
-                    if len(l) == 0: break
-                    l = l.strip('\n')
-                    items = [int(i) for i in l.split(' ')]
-                    uid, train_items = items[0], items[1:]
+        # with open(test_file) as f:
+        #     for l in f.readlines():
+        #         if len(l) > 0:
+        #             l = l.strip('\n')
+        #             try:
+        #                 items = [int(i) for i in l.split(' ')[1:]]
+        #             except Exception:
+        #                 continue
+        #             self.n_items = max(self.n_items, max(items))
+        #             self.n_test += len(items)
 
-                    for i in train_items:
-                        self.R[uid, i] = 1.
+        # self.n_items += 1
+        # self.n_users += 1
+        # self.print_statistics()
+        # self.R = sp.dok_matrix((self.n_users, self.n_items), dtype=np.float32)
+        # self.train_items, self.test_set = {}, {}
+        # with open(train_file) as f_train:
+        #     with open(test_file) as f_test:
+        #         for l in f_train.readlines():
+        #             if len(l) == 0: break
+        #             l = l.strip('\n')
+        #             items = [int(i) for i in l.split(' ')]
+        #             uid, train_items = items[0], items[1:]
+
+        #             for i in train_items:
+        #                 self.R[uid, i] = 1.
                         
-                    self.train_items[uid] = train_items
+        #             self.train_items[uid] = train_items
+
+                # for l in f_test.readlines():
+                #     if len(l) == 0: break
+                #     l = l.strip('\n')
+                #     try:
+                #         items = [int(i) for i in l.split(' ')]
+                #     except Exception:
+                #         continue
                     
-                for l in f_test.readlines():
-                    if len(l) == 0: break
-                    l = l.strip('\n')
-                    try:
-                        items = [int(i) for i in l.split(' ')]
-                    except Exception:
-                        continue
-                    
-                    uid, test_items = items[0], items[1:]
-                    self.test_set[uid] = test_items
+                #     uid, test_items = items[0], items[1:]
+                #     self.test_set[uid] = test_items
+
+        if dataset in ['TAFA-grocery', 'TAFA-digital-music']:
+
+            train_file = path + '/train.pkl'
+            test_file = path + '/val.pkl'
+
+            self.train_items, self.test_set = defaultdict(list), defaultdict(list)
+
+            train = pickle.load(open(train_file, "rb"))
+            train_users, train_items, train_ratings = train
+            train_users, train_items, train_ratings = binarize_dataset(3, train_users, train_items,
+                                                                           train_ratings)
+            train_new = []
+            for uid, iid in zip(train_users, train_items):
+                train_new.append([uid, iid])
+
+            train = np.array(train_new).astype(int)
+            trainUser = train[:, 0]
+            trainItem = train[:, 1]
+            self.exist_users = np.unique(trainUser).tolist()
+
+            self.n_users = np.max(trainUser)
+            self.n_items = np.max(trainItem)
+            self.n_train = train.shape[0]
+
+            test = pickle.load(open(test_file, "rb"))
+            test_users, test_items, test_ratings = test
+            test_users, test_items, test_ratings = binarize_dataset(3, test_users, test_items,
+                                                                     test_ratings)
+            test_new = []
+            for uid, iid in zip(test_users, test_items):
+                test_new.append([uid, iid])
+                self.test_set[uid].append(iid)
+
+            test = np.array(test_new).astype(int)
+
+            testUser = test[:, 0]
+            testItem = test[:, 1]
+            self.n_test = test.shape[0]
+
+            self.n_users = max(self.n_users, np.max(testUser)) + 1
+            self.n_items = max(self.n_items, np.max(testItem)) + 1
+
+            self.print_statistics()
+            self.R = sp.dok_matrix((self.n_users, self.n_items), dtype=np.float32)
+
+            for uid, iid in zip(train_users, train_items):
+                self.R[uid, iid] = 1.
+                self.train_items[uid].append(iid)
+
+        else:
+
+            train_file = path + '/train.pkl'
+            test_file = path + '/test.pkl'
+
+            self.train_items, self.test_set = defaultdict(list), defaultdict(list)
+
+            train = pickle.load(open(train_file, "rb"))
+            for user, items in train.items():
+                self.exist_users.append(user)
+                self.n_items = max(self.n_items, max(items))
+                self.n_train += len(items)
+                for item in items:
+                    self.train_items[user].append(item)
+
+            self.n_users = max(self.exist_users) + 1
+
+            test = pickle.load(open(test_file, "rb"))
+            for user, items in test.items():
+                self.n_items = max(self.n_items, max(items))
+                self.n_test += len(items)
+                for item in items:
+                    self.test_set[user].append(item)
+
+            self.n_items += 1
+            self.print_statistics()
+            self.R = sp.dok_matrix((self.n_users, self.n_items), dtype=np.float32)
+
+            for user, items in train.items():
+                for item in items:
+                    self.R[user, item] = 1.
 
     def get_adj_mat(self):
         try:
@@ -231,11 +323,6 @@ class Data(object):
             neg_items += sample_neg_items_for_u(u, 1)
 
         return users, pos_items, neg_items
-    
-    
-    
-    
-    
     
     def get_num_users_items(self):
         return self.n_users, self.n_items

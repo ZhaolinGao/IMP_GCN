@@ -17,17 +17,17 @@ def parse_args():
                         help='Interval of evaluation.')
     parser.add_argument('--epoch', type=int, default=1000,
                         help='Number of epoch.')
-    parser.add_argument('--groups', type=int, default=2,
+    parser.add_argument('--groups', type=int, default=3,
                         help='Number of group.')
     parser.add_argument('--embed_size', type=int, default=64,
                         help='Embedding size.')
-    parser.add_argument('--layer_size', nargs='?', default='[64,64,64]',
+    parser.add_argument('--layer_size', nargs='?', default='[64,64,64,64,64,64,64]',
                         help='Output sizes of every layer')
     parser.add_argument('--batch_size', type=int, default=1024,
                         help='Batch size.')
-    parser.add_argument('--regs', nargs='?', default='[1e-5]',
+    parser.add_argument('--regs', nargs='?', default='[1e-4]',
                         help='Regularizations.')
-    parser.add_argument('--lr', type=float, default=0.01,
+    parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate.')
 
     parser.add_argument('--model_type', nargs='?', default='IMP_GCN',
@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument('--mlp_dropout', nargs='?', default='1.0',
                         help='Keep probability of MLP layer')
 
-    parser.add_argument('--Ks', nargs='?', default='[10, 20]',
+    parser.add_argument('--Ks', nargs='?', default='[5, 10, 20]',
                         help='Output sizes of every layer')
 
     parser.add_argument('--save_flag', type=int, default=1,
