@@ -207,17 +207,17 @@ class IMP_GCN(object):
         temp_embed = []
         for f in range(self.n_fold):
             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
-        user_group_embeddings_side = tf.concat(temp_embed, 0) + ego_embeddings
+        temp_embed = tf.concat(temp_embed, 0) + ego_embeddings
 
-        user_group_embeddings_side = tf.split(user_group_embeddings_side, 10, axis=0)
+        temp_embed = tf.split(temp_embed, 10, axis=0)
         user_group_embeddings_hidden_1 = []
         for b in range(10):
-            user_group_embeddings_hidden_1.append(tf.matmul(user_group_embeddings_side[b], self.weights['W_gc_1']))
+            user_group_embeddings_hidden_1.append(tf.matmul(temp_embed[b], self.weights['W_gc_1']))
         user_group_embeddings_hidden_1 = tf.concat(user_group_embeddings_hidden_1, axis=0)
 
         user_group_embeddings_hidden_1 = tf.nn.leaky_relu(user_group_embeddings_hidden_1 + self.weights['b_gc_1'])
 
-        user_group_embeddings_hidden_d1 = tf.nn.dropout(user_group_embeddings_hidden_1, 0.6)
+        user_group_embeddings_hidden_1 = tf.nn.dropout(user_group_embeddings_hidden_1, 0.6)
 
         #user_group_embeddings_hidden_2 = tf.nn.leaky_relu(tf.matmul(user_group_embeddings_hidden_1, self.weights['W_gc_2']) + self.weights[
         #    'b_gc_2'])
@@ -227,11 +227,11 @@ class IMP_GCN(object):
 
         #user_group_embeddings_hidden_d2 = tf.nn.dropout(user_group_embeddings_hidden_2, 0.8)
 
-        user_group_embeddings_sum = tf.matmul(user_group_embeddings_hidden_d1, self.weights['W_gc']) + self.weights['b_gc']
+        user_group_embeddings_hidden_1 = tf.matmul(user_group_embeddings_hidden_1, self.weights['W_gc']) + self.weights['b_gc']
 
         # user 0-1
-        a_top, a_top_idx = tf.nn.top_k(user_group_embeddings_sum, 1, sorted=False)
-        user_group_embeddings = tf.cast(tf.equal(user_group_embeddings_sum,a_top), dtype=tf.float32)
+        a_top, _ = tf.nn.top_k(user_group_embeddings_hidden_1, 1, sorted=False)
+        user_group_embeddings = tf.cast(tf.equal(user_group_embeddings_hidden_1,a_top), dtype=tf.float32)
         u_group_embeddings, i_group_embeddings = tf.split(user_group_embeddings, [self.n_users, self.n_items], 0)
         i_group_embeddings = tf.ones(tf.shape(i_group_embeddings))
         user_group_embeddings = tf.concat([u_group_embeddings, i_group_embeddings], axis = 0)
@@ -244,8 +244,8 @@ class IMP_GCN(object):
         for f in range(self.n_fold):
             temp_embed.append(tf.sparse_tensor_dense_matmul(A_fold_hat[f], ego_embeddings))
 
-        side_embeddings = tf.concat(temp_embed, 0)
-        all_embeddings += [side_embeddings]
+        temp_embed = tf.concat(temp_embed, 0)
+        all_embeddings += [temp_embed]
 
         ego_embeddings_g = []
         for g in range(0,self.group):
@@ -271,7 +271,7 @@ class IMP_GCN(object):
         all_embeddings = tf.stack(all_embeddings, 1)
         all_embeddings = tf.reduce_mean(all_embeddings, axis=1, keepdims=False)
         u_g_embeddings, i_g_embeddings = tf.split(all_embeddings, [self.n_users, self.n_items], 0)
-        return u_g_embeddings, i_g_embeddings, A_fold_hat_group_filter, user_group_embeddings_sum
+        return u_g_embeddings, i_g_embeddings, A_fold_hat_group_filter, user_group_embeddings_hidden_1
 
     def _create_lightgcn_embed(self):
         if self.node_dropout_flag:
