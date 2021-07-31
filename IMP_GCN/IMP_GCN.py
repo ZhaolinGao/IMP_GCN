@@ -425,6 +425,7 @@ if __name__ == '__main__':
 
     # if args.save_flag == 1:
     save_saver.restore(sess, tf.train.latest_checkpoint(weights_save_path))
+    print(tf.train.latest_checkpoint(weights_save_path))
 
     for epoch in range(args.epoch):
         t1 = time()
