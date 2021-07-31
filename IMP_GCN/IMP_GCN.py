@@ -399,11 +399,11 @@ if __name__ == '__main__':
         ensureDir(weights_save_path)
         save_saver = tf.train.Saver(max_to_keep=1)
 
-    # config = tf.ConfigProto()
-    # # config = tf.ConfigProto(
-    # #     device_count = {'GPU': 0}
-    # # )
-    # config.gpu_options.allow_growth = True
+    # # config = tf.ConfigProto()
+    # config = tf.ConfigProto(
+    #     device_count = {'GPU': 0}
+    # )
+    # # config.gpu_options.allow_growth = True
     # sess = tf.Session(config=config)
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
     sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
@@ -422,6 +422,9 @@ if __name__ == '__main__':
     loss_loger, pre_loger, rec_loger, ndcg_loger, hit_loger = [], [], [], [], []
     stopping_step = 0
     should_stop = False
+
+    # if args.save_flag == 1:
+    save_saver.restore(sess, tf.train.latest_checkpoint(weights_save_path))
 
     for epoch in range(args.epoch):
         t1 = time()
@@ -443,6 +446,12 @@ if __name__ == '__main__':
         if np.isnan(loss) == True:
             print('ERROR: loss is nan.')
             sys.exit()
+
+        # *********************************************************
+        # save the user & item embeddings for pretraining.
+        # if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
+        save_saver.save(sess, weights_save_path + '/weights', global_step=epoch)
+        print('save the weights in path: ', weights_save_path)
 
         # print the test evaluation metrics each 10 epochs; pos:neg = 1:10.
         if (epoch + 1) % 10 != 0:
@@ -479,12 +488,6 @@ if __name__ == '__main__':
         # early stopping when cur_best_pre_0 is decreasing for ten successive steps.
         if should_stop == True:
             break
-
-        # *********************************************************
-        # save the user & item embeddings for pretraining.
-        if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
-            save_saver.save(sess, weights_save_path + '/weights', global_step=epoch)
-            print('save the weights in path: ', weights_save_path)
 
     recs = np.array(rec_loger)
     pres = np.array(pre_loger)
